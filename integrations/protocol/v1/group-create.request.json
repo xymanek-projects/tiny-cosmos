@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "requestId": "op_fixturegroupcreate",
+  "operation": "GetOrCreateGroup",
+  "payload": {
+    "logicalName": "opencode:fixture",
+    "ownerUid": 1000,
+    "hostWorkspacePath": "/home/agent/project",
+    "guestProjectPath": "/workspace/project",
+    "imageId": "ubuntu-24.04-dev",
+    "resources": {
+      "vcpu": 2,
+      "memoryMiB": 4096,
+      "systemDiskGiB": 12,
+      "workspaceDiskGiB": 32
+    }
+  }
+}

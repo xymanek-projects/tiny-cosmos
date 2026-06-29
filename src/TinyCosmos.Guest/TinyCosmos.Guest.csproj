@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\TinyCosmos.Core\TinyCosmos.Core.csproj" />
+    <ProjectReference Include="..\TinyCosmos.Protocol\TinyCosmos.Protocol.csproj" />
+    <ProjectReference Include="..\TinyCosmos.Linux\TinyCosmos.Linux.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PublishTrimmed>true</PublishTrimmed>
+    <PublishAot>true</PublishAot>
+    <SelfContained>true</SelfContained>
+    <UseAppHost>true</UseAppHost>
+  </PropertyGroup>
+
+</Project>

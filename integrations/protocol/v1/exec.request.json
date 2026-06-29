@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "requestId": "op_fixtureexec",
+  "operation": "Exec",
+  "payload": {
+    "ownerUid": 1000,
+    "groupId": "grp_fixturegroup",
+    "workingDirectory": "/workspace/project",
+    "command": ["bash", "-lc", "printf '%s\\n' tiny-cosmos"],
+    "timeoutSeconds": 30,
+    "outputLimitBytes": 1048576,
+    "pseudoTerminal": false
+  }
+}

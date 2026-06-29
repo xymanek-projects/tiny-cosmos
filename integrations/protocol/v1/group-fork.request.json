@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "requestId": "op_fixturefork",
+  "operation": "ForkGroup",
+  "payload": {
+    "ownerUid": 1000,
+    "sourceGroupId": "grp_sourcefixture",
+    "newLogicalName": "opencode:forked-project"
+  }
+}

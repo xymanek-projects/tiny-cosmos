@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "requestId": "op_fixturefileread",
+  "operation": "FileRead",
+  "payload": {
+    "ownerUid": 1000,
+    "groupId": "grp_fixturegroup",
+    "path": "/workspace/project/README.md",
+    "maxBytes": 1048576
+  }
+}

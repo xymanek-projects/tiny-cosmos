@@ -1,0 +1,17 @@
+[Unit]
+Description=Tiny Cosmos guest supervisor
+DefaultDependencies=no
+After=systemd-modules-load.service
+Before=ssh.service docker.service
+
+[Service]
+Type=simple
+ExecStartPre=-/bin/sh -c '/usr/sbin/modprobe -q vmw_vsock_virtio_transport || true'
+ExecStart=/usr/lib/tiny-cosmos/bin/tinycosmos-guest serve 1024 41024 unknown
+StandardOutput=journal+console
+StandardError=journal+console
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

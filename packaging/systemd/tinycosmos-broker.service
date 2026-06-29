@@ -1,0 +1,11 @@
+[Unit]
+Description=Tiny Cosmos privileged broker
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/tiny-cosmos/bin/tinycosmos-broker serve --socket /run/tiny-cosmos/broker.sock
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

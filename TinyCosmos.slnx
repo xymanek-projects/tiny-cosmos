@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TinyCosmos.Broker/TinyCosmos.Broker.csproj" />
+    <Project Path="src/TinyCosmos.Cli/TinyCosmos.Cli.csproj" />
+    <Project Path="src/TinyCosmos.Core/TinyCosmos.Core.csproj" />
+    <Project Path="src/TinyCosmos.Guest/TinyCosmos.Guest.csproj" />
+    <Project Path="src/TinyCosmos.Linux/TinyCosmos.Linux.csproj" />
+    <Project Path="src/TinyCosmos.Manager/TinyCosmos.Manager.csproj" />
+    <Project Path="src/TinyCosmos.Protocol/TinyCosmos.Protocol.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TinyCosmos.Core.Tests/TinyCosmos.Core.Tests.csproj" />
+    <Project Path="tests/TinyCosmos.Integration.Tests/TinyCosmos.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

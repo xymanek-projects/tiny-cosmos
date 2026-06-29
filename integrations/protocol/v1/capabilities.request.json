@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "requestId": "op_fixturecapabilities",
+  "operation": "Capabilities",
+  "payload": {}
+}

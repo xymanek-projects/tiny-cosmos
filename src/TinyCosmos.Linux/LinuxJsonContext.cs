@@ -1,0 +1,38 @@
+using System.Text.Json.Serialization;
+using TinyCosmos.Protocol;
+
+namespace TinyCosmos.Linux;
+
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+[JsonSerializable(typeof(BrokerStorageRequest))]
+[JsonSerializable(typeof(BrokerStoragePlan))]
+[JsonSerializable(typeof(BrokerNetworkRequest))]
+[JsonSerializable(typeof(BrokerNetworkPlan))]
+[JsonSerializable(typeof(BrokerLaunchRequest))]
+[JsonSerializable(typeof(BrokerLaunchPlan))]
+[JsonSerializable(typeof(FirecrackerApiCall))]
+[JsonSerializable(typeof(FirecrackerApiCall[]))]
+[JsonSerializable(typeof(BrokerStopRequest))]
+[JsonSerializable(typeof(BrokerStopPlan))]
+[JsonSerializable(typeof(BrokerCleanupRequest))]
+[JsonSerializable(typeof(BrokerCleanupPlan))]
+[JsonSerializable(typeof(BrokerOperationRecord))]
+[JsonSerializable(typeof(BrokerCommandResult))]
+[JsonSerializable(typeof(BrokerCommandResult[]))]
+[JsonSerializable(typeof(PlannedCommand))]
+[JsonSerializable(typeof(PlannedCommand[]))]
+[JsonSerializable(typeof(ImageManifest))]
+[JsonSerializable(typeof(ImageManifestFirecracker))]
+[JsonSerializable(typeof(ImageManifestArtifacts))]
+[JsonSerializable(typeof(ImageManifestArtifact))]
+[JsonSerializable(typeof(ImageManifestCheck))]
+[JsonSerializable(typeof(ImageManifestCheck[]))]
+[JsonSerializable(typeof(ImageManifestVerificationResult))]
+[JsonSerializable(typeof(SeedFile))]
+[JsonSerializable(typeof(SeedFile[]))]
+[JsonSerializable(typeof(SeedManifest))]
+[JsonSerializable(typeof(GitHandoffPlan))]
+[JsonSerializable(typeof(VscodeSshHostEntry))]
+[JsonSerializable(typeof(VscodeOpenPlan))]
+[JsonSerializable(typeof(EmptyPayload))]
+public partial class LinuxJsonContext : JsonSerializerContext;

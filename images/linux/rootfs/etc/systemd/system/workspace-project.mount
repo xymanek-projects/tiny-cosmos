@@ -1,0 +1,15 @@
+[Unit]
+Description=Tiny Cosmos workspace disk
+After=systemd-remount-fs.service
+Before=tinycosmos-guest.service ssh.service docker.service
+JobTimeoutSec=5
+
+[Mount]
+What=/dev/vdb
+Where=/workspace/project
+Type=ext4
+Options=defaults,nofail,x-systemd.device-timeout=5s
+TimeoutSec=5
+
+[Install]
+WantedBy=multi-user.target

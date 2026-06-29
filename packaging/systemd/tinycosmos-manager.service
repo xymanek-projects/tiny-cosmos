@@ -1,0 +1,10 @@
+[Unit]
+Description=Tiny Cosmos per-user manager
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/tiny-cosmos/bin/tinycosmos-manager
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

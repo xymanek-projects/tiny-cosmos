@@ -1,0 +1,110 @@
+name: ci
+
+on:
+  push:
+    branches: [master, main, poc-impl-1]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install platform prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iproute2 nftables e2fsprogs openssh-client git curl tar rsync util-linux
+      - name: Test
+        run: ./scripts/test.sh
+
+  publish-package:
+    runs-on: ubuntu-24.04
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install package prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev
+      - name: Publish Native AOT
+        run: ./scripts/publish-native.sh linux-x64
+      - name: Package deb
+        run: ./scripts/package-deb.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tiny-cosmos-artifacts
+          path: artifacts/**
+
+  kvm-e2e:
+    runs-on: ubuntu-24.04
+    needs: publish-package
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Enable KVM group permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          if [ ! -e /dev/kvm ]; then
+            echo "::error::/dev/kvm is unavailable on this runner"
+            exit 1
+          fi
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+            echo "::error::/dev/kvm exists but is not readable and writable by the runner"
+            ls -l /dev/kvm
+            exit 1
+          fi
+      - name: Install platform prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iproute2 nftables e2fsprogs openssh-client git curl tar rsync util-linux clang zlib1g-dev debootstrap zstd lz4
+          sudo apt-get install -y "linux-headers-$(uname -r)" || true
+      - name: Publish Native AOT
+        run: ./scripts/publish-native.sh linux-x64
+      - name: Build guest image
+        run: |
+          sudo ./scripts/prepare-host-kernel.sh artifacts/host-kernel
+          sudo chown -R "$USER:$USER" artifacts/host-kernel
+          image_args=(
+            --guest-binary "$PWD/artifacts/publish/linux-x64/Guest/TinyCosmos.Guest"
+            --kernel "$PWD/artifacts/host-kernel/vmlinux"
+            --modules-dir "/lib/modules/$(uname -r)"
+          )
+          if [ -f "$PWD/artifacts/host-kernel/initrd" ]; then
+            image_args+=(--initrd "$PWD/artifacts/host-kernel/initrd")
+          fi
+          sudo ./images/linux/build-image.sh "${image_args[@]}"
+          sudo chown -R "$USER:$USER" artifacts/images
+      - name: Package deb
+        run: SKIP_PUBLISH=1 ./scripts/package-deb.sh
+      - name: Install package
+        run: |
+          sudo apt-get install -y "$PWD/artifacts/deb/tiny-cosmos_0.1.0_amd64.deb"
+          sudo tinycosmos setup
+      - name: KVM E2E
+        run: |
+          cleanup() {
+            sudo tinycosmos cleanup --purge >/dev/null 2>&1 || true
+            sudo dpkg -P tiny-cosmos >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          TINYCOSMOS_CLI=/usr/bin/tinycosmos \
+          TINYCOSMOS_MANAGER=/usr/lib/tiny-cosmos/bin/tinycosmos-manager \
+          TINYCOSMOS_GUEST=/usr/lib/tiny-cosmos/bin/tinycosmos-guest \
+            ./scripts/e2e-local.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tiny-cosmos-kvm-e2e-artifacts
+          path: artifacts/**

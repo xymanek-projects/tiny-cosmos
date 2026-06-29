@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "requestId": "op_fixturereplace",
+  "operation": "ReplacePrimarySandbox",
+  "payload": {
+    "ownerUid": 1000,
+    "groupId": "grp_replacefixture",
+    "imageId": "ubuntu-24.04-dev",
+    "resources": null
+  }
+}

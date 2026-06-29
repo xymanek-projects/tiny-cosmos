@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "requestId": "op_fixturediagnostics",
+  "success": true,
+  "payload": {
+    "passed": false,
+    "checks": [
+      {
+        "name": "kvm",
+        "passed": false,
+        "message": "/dev/kvm is missing.",
+        "remediation": "Enable KVM or use a KVM-capable runner."
+      }
+    ]
+  },
+  "error": null
+}
