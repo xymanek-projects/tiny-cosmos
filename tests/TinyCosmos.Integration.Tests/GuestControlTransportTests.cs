@@ -21,7 +21,9 @@ public sealed class GuestControlTransportTests
         await File.WriteAllTextAsync(identity + ".pub", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest tinycosmos@test\n");
         var group = Group();
         var server = RunFakeFirecrackerVsockAsync(vsockPath, group.PrimarySandbox.SandboxId.Value, expectedConnections: 3);
-        var client = new FirecrackerVsockGuestControlClient(new GuestControlOptions(1024, identity, "tinycosmos-test"));
+        var runner = new RecordingProcessRunner((fileName, _, _, _) =>
+            new ProcessRunResult(fileName == "/usr/bin/ssh" ? 0 : 1, string.Empty, string.Empty, TimedOut: false));
+        var client = new FirecrackerVsockGuestControlClient(new GuestControlOptions(1024, identity, "tinycosmos-test"), runner);
 
         var result = await client.EstablishAsync(group, Provisioning(vsockPath), CancellationToken.None);
 
@@ -37,6 +39,11 @@ public sealed class GuestControlTransportTests
         Assert.Contains(
             "172.31.42.2 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHostKey",
             await File.ReadAllTextAsync(Path.Combine(temp.Path, "known_hosts")));
+        var probe = Assert.Single(runner.Calls);
+        Assert.Equal("/usr/bin/ssh", probe.FileName);
+        Assert.Contains("agent@172.31.42.2", probe.Arguments);
+        Assert.DoesNotContain(probe.Arguments, argument => argument.StartsWith("ControlPath=", StringComparison.Ordinal));
+        Assert.Contains("/usr/bin/mountpoint -q /workspace/project", probe.Arguments[^1], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -52,12 +59,15 @@ public sealed class GuestControlTransportTests
         var tcpPort = ((IPEndPoint)portReservation.LocalEndPoint!).Port;
         portReservation.Close();
         var server = RunFakeTcpGuestControlAsync(tcpPort, group.PrimarySandbox.SandboxId.Value, expectedConnections: 3);
+        var runner = new RecordingProcessRunner((fileName, _, _, _) =>
+            new ProcessRunResult(fileName == "/usr/bin/ssh" ? 0 : 1, string.Empty, string.Empty, TimedOut: false));
         var client = new FirecrackerVsockGuestControlClient(new GuestControlOptions(
             1024,
             identity,
             "tinycosmos-test",
             tcpPort,
-            TimeSpan.FromMilliseconds(50)));
+            TimeSpan.FromMilliseconds(50)),
+            runner);
 
         var result = await client.EstablishAsync(group, Provisioning(Path.Combine(temp.Path, "missing-vsock.sock")), CancellationToken.None);
 
@@ -69,6 +79,7 @@ public sealed class GuestControlTransportTests
         Assert.Contains(
             "127.0.0.1 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHostKey",
             await File.ReadAllTextAsync(Path.Combine(temp.Path, "known_hosts")));
+        Assert.Single(runner.Calls);
     }
 
     [Fact]
@@ -323,6 +334,25 @@ public sealed class GuestControlTransportTests
     }
 
     private sealed record FakeVsockObservation(IReadOnlyList<string> ConnectLines, IReadOnlyList<string> Operations);
+
+    private sealed class RecordingProcessRunner(Func<string, IReadOnlyList<string>, string?, TimeSpan?, ProcessRunResult> handler) : IProcessRunner
+    {
+        public List<ProcessCall> Calls { get; } = [];
+
+        public Task<ProcessRunResult> RunAsync(
+            string fileName,
+            IEnumerable<string> arguments,
+            string? workingDirectory,
+            TimeSpan? timeout,
+            CancellationToken cancellationToken)
+        {
+            var capturedArguments = arguments.ToArray();
+            Calls.Add(new ProcessCall(fileName, capturedArguments, workingDirectory, timeout));
+            return Task.FromResult(handler(fileName, capturedArguments, workingDirectory, timeout));
+        }
+    }
+
+    private sealed record ProcessCall(string FileName, IReadOnlyList<string> Arguments, string? WorkingDirectory, TimeSpan? Timeout);
 
     private sealed class TempDir : IDisposable
     {

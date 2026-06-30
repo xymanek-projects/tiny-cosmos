@@ -138,6 +138,7 @@ public sealed class FirecrackerVsockGuestControlClient(
         }
 
         await TrustGuestHostKeyAsync(target.PrimarySandbox.Network.PrimaryAddress, ready.SshHostKey, cancellationToken).ConfigureAwait(false);
+        await WaitForSshWorkspaceAsync(target, cancellationToken).ConfigureAwait(false);
         return new GuestControlResult(hello, key, ready);
     }
 
@@ -294,6 +295,50 @@ public sealed class FirecrackerVsockGuestControlClient(
             .Where(existingLine => !existingLine.StartsWith(marker + " ", StringComparison.Ordinal))
             .Append(line);
         await File.WriteAllLinesAsync(knownHostsFile, retained, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task WaitForSshWorkspaceAsync(GroupBundle target, CancellationToken cancellationToken)
+    {
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromMinutes(2);
+        ProcessRunResult? last = null;
+        var sshTarget = new SshTarget(
+            target.PrimarySandbox.Network.PrimaryAddress,
+            options.SshPort,
+            "agent",
+            options.IdentityFile,
+            options.EffectiveKnownHostsFile,
+            ControlPath: null);
+        var request = new SshExecRequest(
+            sshTarget,
+            "/",
+            ["/bin/sh", "-lc", "/usr/bin/mountpoint -q /workspace/project && /usr/bin/test -w /workspace/project"],
+            TimeoutSeconds: 5,
+            OutputLimitBytes: 4096);
+        var plan = SshCommandPlanner.PlanExec(request);
+
+        while (DateTimeOffset.UtcNow < deadline && !cancellationToken.IsCancellationRequested)
+        {
+            last = await _processRunner.RunAsync(
+                plan.FileName,
+                plan.Arguments,
+                null,
+                TimeSpan.FromSeconds(request.TimeoutSeconds),
+                cancellationToken).ConfigureAwait(false);
+            if (!last.TimedOut && last.ExitCode == 0)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
+        }
+
+        var detail = last is null
+            ? "probe did not run"
+            : $"last exit code {last.ExitCode}" + (string.IsNullOrWhiteSpace(last.Stderr) ? string.Empty : ": " + last.Stderr.Trim());
+        throw new TinyCosmosException(new TinyCosmosError(
+            TinyCosmosErrorCode.NotReady,
+            "Guest SSH workspace did not become ready.",
+            detail));
     }
 
     private static bool IsTransientVsockStartup(Exception ex)
