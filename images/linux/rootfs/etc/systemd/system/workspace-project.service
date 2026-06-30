@@ -1,0 +1,12 @@
+[Unit]
+Description=Tiny Cosmos workspace disk
+Before=tinycosmos-guest.service ssh.service docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=75
+ExecStart=/bin/sh -ceu 'mkdir -p /workspace/project; for i in $(seq 1 120); do /usr/bin/mountpoint -q /workspace/project && exit 0; /usr/bin/mount -t ext4 LABEL=tinycosmos-workspace /workspace/project && exit 0; sleep 0.5; done; /usr/bin/lsblk -f >&2 || true; /usr/sbin/blkid >&2 || true; exit 1'
+
+[Install]
+WantedBy=multi-user.target

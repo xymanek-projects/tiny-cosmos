@@ -151,7 +151,7 @@ EOF
   chmod 0700 "$root/home/agent/.ssh"
 
   run_chroot "$root" ssh-keygen -A
-  run_chroot "$root" systemctl enable workspace-project.mount
+  run_chroot "$root" systemctl enable workspace-project.service
   run_chroot "$root" systemctl enable tinycosmos-guest.service
   run_chroot "$root" systemctl enable ssh.service
   run_chroot "$root" systemctl enable docker.service || true
