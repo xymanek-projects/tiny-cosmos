@@ -314,7 +314,7 @@ public sealed class FirecrackerVsockGuestControlClient(
             [
                 "/bin/sh",
                 "-lc",
-                "/usr/bin/mountpoint -q /workspace/project || /usr/bin/sudo /usr/bin/mount -t ext4 LABEL=tinycosmos-workspace /workspace/project; /usr/bin/mountpoint -q /workspace/project && /usr/bin/test -w /workspace/project"
+                "mkdir -p /workspace/project; if /usr/bin/mountpoint -q /workspace/project; then exit 0; fi; /usr/bin/sudo /usr/bin/mount -t ext4 LABEL=tinycosmos-workspace /workspace/project || for dev in /dev/vdb /dev/vdc /dev/sdb /dev/xvdb; do if [ -b \"$dev\" ]; then /usr/bin/sudo /usr/bin/mount -t ext4 \"$dev\" /workspace/project && break; fi; done; /usr/bin/mountpoint -q /workspace/project && /usr/bin/test -w /workspace/project || (/usr/bin/lsblk -f >&2 || true; /usr/sbin/blkid >&2 || true; exit 1)"
             ],
             TimeoutSeconds: 5,
             OutputLimitBytes: 4096);

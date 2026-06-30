@@ -45,6 +45,8 @@ public sealed class GuestControlTransportTests
         Assert.DoesNotContain(probe.Arguments, argument => argument.StartsWith("ControlPath=", StringComparison.Ordinal));
         Assert.Contains("/usr/bin/mountpoint -q /workspace/project", probe.Arguments[^1], StringComparison.Ordinal);
         Assert.Contains("/usr/bin/sudo /usr/bin/mount -t ext4 LABEL=tinycosmos-workspace /workspace/project", probe.Arguments[^1], StringComparison.Ordinal);
+        Assert.Contains("/dev/vdb /dev/vdc /dev/sdb /dev/xvdb", probe.Arguments[^1], StringComparison.Ordinal);
+        Assert.Contains("/usr/bin/lsblk -f", probe.Arguments[^1], StringComparison.Ordinal);
     }
 
     [Fact]
