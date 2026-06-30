@@ -1,15 +1,16 @@
 [Unit]
 Description=Tiny Cosmos workspace disk
-After=systemd-remount-fs.service
+Requires=dev-disk-by\x2dlabel-tinycosmos\x2dworkspace.device
+After=systemd-remount-fs.service dev-disk-by\x2dlabel-tinycosmos\x2dworkspace.device
 Before=tinycosmos-guest.service ssh.service docker.service
-JobTimeoutSec=5
+JobTimeoutSec=30
 
 [Mount]
-What=/dev/vdb
+What=LABEL=tinycosmos-workspace
 Where=/workspace/project
 Type=ext4
-Options=defaults,nofail,x-systemd.device-timeout=5s
-TimeoutSec=5
+Options=defaults,x-systemd.device-timeout=30s
+TimeoutSec=30
 
 [Install]
 WantedBy=multi-user.target

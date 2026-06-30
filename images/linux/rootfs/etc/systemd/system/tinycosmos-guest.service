@@ -1,7 +1,8 @@
 [Unit]
 Description=Tiny Cosmos guest supervisor
 DefaultDependencies=no
-After=systemd-modules-load.service
+Requires=workspace-project.mount
+After=systemd-modules-load.service workspace-project.mount
 Before=ssh.service docker.service
 
 [Service]
