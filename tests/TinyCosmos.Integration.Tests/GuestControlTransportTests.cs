@@ -44,6 +44,7 @@ public sealed class GuestControlTransportTests
         Assert.Contains("agent@172.31.42.2", probe.Arguments);
         Assert.DoesNotContain(probe.Arguments, argument => argument.StartsWith("ControlPath=", StringComparison.Ordinal));
         Assert.Contains("/usr/bin/mountpoint -q /workspace/project", probe.Arguments[^1], StringComparison.Ordinal);
+        Assert.Contains("/usr/bin/sudo /usr/bin/mount -t ext4 LABEL=tinycosmos-workspace /workspace/project", probe.Arguments[^1], StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 [Unit]
 Description=Tiny Cosmos workspace disk
-Before=tinycosmos-guest.service ssh.service docker.service
+After=local-fs.target
 
 [Service]
 Type=oneshot

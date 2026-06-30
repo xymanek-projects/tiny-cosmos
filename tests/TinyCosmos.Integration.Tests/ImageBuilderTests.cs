@@ -16,10 +16,11 @@ public sealed class ImageBuilderTests
 
         Assert.Contains("ExecStartPre=-/bin/sh -c '/usr/sbin/modprobe -q vmw_vsock_virtio_transport || true'", service, StringComparison.Ordinal);
         Assert.Contains("ExecStart=/usr/lib/tiny-cosmos/bin/tinycosmos-guest serve 1024 41024 unknown", service, StringComparison.Ordinal);
-        Assert.Contains("Requires=workspace-project.service", service, StringComparison.Ordinal);
-        Assert.Contains("After=systemd-modules-load.service workspace-project.service", service, StringComparison.Ordinal);
+        Assert.Contains("After=systemd-modules-load.service", service, StringComparison.Ordinal);
         Assert.Contains("Before=ssh.service docker.service", service, StringComparison.Ordinal);
-        Assert.Contains("Before=tinycosmos-guest.service ssh.service docker.service", workspaceService, StringComparison.Ordinal);
+        Assert.DoesNotContain("Requires=workspace-project.service", service, StringComparison.Ordinal);
+        Assert.DoesNotContain("Before=tinycosmos-guest.service", workspaceService, StringComparison.Ordinal);
+        Assert.DoesNotContain("Before=ssh.service", workspaceService, StringComparison.Ordinal);
         Assert.Contains("Type=oneshot", workspaceService, StringComparison.Ordinal);
         Assert.Contains("mount -t ext4 LABEL=tinycosmos-workspace /workspace/project", workspaceService, StringComparison.Ordinal);
         Assert.Contains("TimeoutStartSec=75", workspaceService, StringComparison.Ordinal);

@@ -311,7 +311,11 @@ public sealed class FirecrackerVsockGuestControlClient(
         var request = new SshExecRequest(
             sshTarget,
             "/",
-            ["/bin/sh", "-lc", "/usr/bin/mountpoint -q /workspace/project && /usr/bin/test -w /workspace/project"],
+            [
+                "/bin/sh",
+                "-lc",
+                "/usr/bin/mountpoint -q /workspace/project || /usr/bin/sudo /usr/bin/mount -t ext4 LABEL=tinycosmos-workspace /workspace/project; /usr/bin/mountpoint -q /workspace/project && /usr/bin/test -w /workspace/project"
+            ],
             TimeoutSeconds: 5,
             OutputLimitBytes: 4096);
         var plan = SshCommandPlanner.PlanExec(request);
