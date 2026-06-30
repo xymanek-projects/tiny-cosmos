@@ -118,6 +118,37 @@ public sealed class SshDataPlaneTests
     }
 
     [Fact]
+    public async Task OpenSshGuestExecutorRemovesStaleControlSocketBeforeExec()
+    {
+        using var temp = new TempDir();
+        var options = Options(temp.Path);
+        var group = Group();
+        string? controlPath = null;
+        var callCount = 0;
+
+        var runner = new RecordingProcessRunner((fileName, _, _, _) =>
+        {
+            callCount++;
+            if (callCount == 2)
+            {
+                Assert.NotNull(controlPath);
+                Assert.False(File.Exists(controlPath));
+            }
+            return new ProcessRunResult(fileName == "/usr/bin/ssh" ? 0 : 1, "ok", string.Empty, TimedOut: false);
+        });
+        var executor = new OpenSshGuestExecutor(options, runner);
+
+        await executor.ExecuteAsync(group, new ExecPayload(1000, group.Group.GroupId.Value, "/workspace/project", ["true"], 10, 1024), CancellationToken.None);
+        controlPath = runner.Calls[0].Arguments.Single(argument => argument.StartsWith("ControlPath=", StringComparison.Ordinal))["ControlPath=".Length..];
+        await File.WriteAllTextAsync(controlPath, "stale");
+
+        var result = await executor.ExecuteAsync(group, new ExecPayload(1000, group.Group.GroupId.Value, "/workspace/project", ["true"], 10, 1024), CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("ok", result.Stdout);
+    }
+
+    [Fact]
     public async Task OpenSftpFileServiceReadsThroughBatchFileAndHonorsReadLimit()
     {
         using var temp = new TempDir();

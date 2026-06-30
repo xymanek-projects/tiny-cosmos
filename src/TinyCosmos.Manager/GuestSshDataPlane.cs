@@ -58,8 +58,10 @@ public sealed class OpenSshGuestExecutor(GuestSshOptions options, IProcessRunner
 
     public async Task<ExecResult> ExecuteAsync(GroupBundle target, ExecPayload payload, CancellationToken cancellationToken)
     {
+        var sshTarget = ToTarget(options, target);
+        RemoveControlSocket(sshTarget);
         var plan = SshCommandPlanner.PlanExec(new SshExecRequest(
-            ToTarget(options, target),
+            sshTarget,
             payload.WorkingDirectory,
             payload.Command,
             payload.TimeoutSeconds,
@@ -113,6 +115,14 @@ public sealed class OpenSshGuestExecutor(GuestSshOptions options, IProcessRunner
         truncated = true;
         return Encoding.UTF8.GetString(bytes.AsSpan(0, limitBytes));
     }
+
+    internal static void RemoveControlSocket(SshTarget target)
+    {
+        if (!string.IsNullOrWhiteSpace(target.ControlPath))
+        {
+            File.Delete(target.ControlPath);
+        }
+    }
 }
 
 public sealed class OpenSftpGuestFileService(GuestSshOptions options, IProcessRunner? processRunner = null) : IGuestFileService
@@ -124,7 +134,9 @@ public sealed class OpenSftpGuestFileService(GuestSshOptions options, IProcessRu
         using var temp = TemporaryGuestIo.Create(options.TempDirectory);
         var localPath = Path.Combine(temp.Path, "read.bin");
         var batchPath = Path.Combine(temp.Path, "read.batch");
-        var plan = SftpCommandPlanner.PlanRead(new SftpReadRequest(ToTarget(target), payload.Path, localPath, batchPath));
+        var sshTarget = ToTarget(target);
+        OpenSshGuestExecutor.RemoveControlSocket(sshTarget);
+        var plan = SftpCommandPlanner.PlanRead(new SftpReadRequest(sshTarget, payload.Path, localPath, batchPath));
         await File.WriteAllTextAsync(batchPath, plan.BatchText, cancellationToken).ConfigureAwait(false);
         await RunCheckedAsync(plan.FileName, plan.Arguments, TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
 
@@ -150,7 +162,9 @@ public sealed class OpenSftpGuestFileService(GuestSshOptions options, IProcessRu
         var localPath = Path.Combine(temp.Path, "write.bin");
         var batchPath = Path.Combine(temp.Path, "write.batch");
         await File.WriteAllBytesAsync(localPath, bytes, cancellationToken).ConfigureAwait(false);
-        var plan = SftpCommandPlanner.PlanWrite(new SftpWriteRequest(ToTarget(target), localPath, payload.Path, batchPath, payload.Executable));
+        var sshTarget = ToTarget(target);
+        OpenSshGuestExecutor.RemoveControlSocket(sshTarget);
+        var plan = SftpCommandPlanner.PlanWrite(new SftpWriteRequest(sshTarget, localPath, payload.Path, batchPath, payload.Executable));
         await File.WriteAllTextAsync(batchPath, plan.BatchText, cancellationToken).ConfigureAwait(false);
         await RunCheckedAsync(plan.FileName, plan.Arguments, TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
         return new FileWriteResult(payload.Path, bytes.Length);
@@ -165,7 +179,9 @@ public sealed class OpenSftpGuestFileService(GuestSshOptions options, IProcessRu
 
         using var temp = TemporaryGuestIo.Create(options.TempDirectory);
         var batchPath = Path.Combine(temp.Path, "list.batch");
-        var plan = SftpCommandPlanner.PlanList(new SftpListRequest(ToTarget(target), payload.Path, batchPath));
+        var sshTarget = ToTarget(target);
+        OpenSshGuestExecutor.RemoveControlSocket(sshTarget);
+        var plan = SftpCommandPlanner.PlanList(new SftpListRequest(sshTarget, payload.Path, batchPath));
         await File.WriteAllTextAsync(batchPath, plan.BatchText, cancellationToken).ConfigureAwait(false);
         var run = await RunCheckedAsync(plan.FileName, plan.Arguments, TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
         var entries = ParseSftpList(payload.Path, run.Stdout)
@@ -220,8 +236,10 @@ public sealed class OpenSftpGuestFileService(GuestSshOptions options, IProcessRu
 
     private async Task<ProcessRunResult> RunSshAsync(GroupBundle target, IReadOnlyList<string> command, TimeSpan timeout, CancellationToken cancellationToken)
     {
+        var sshTarget = ToTarget(target);
+        OpenSshGuestExecutor.RemoveControlSocket(sshTarget);
         var plan = SshCommandPlanner.PlanExec(new SshExecRequest(
-            ToTarget(target),
+            sshTarget,
             "/",
             command,
             (int)timeout.TotalSeconds,
