@@ -194,7 +194,14 @@ public sealed class OpenSftpGuestFileService(GuestSshOptions options, IProcessRu
     {
         var run = await RunSshAsync(
             target,
-            ["/usr/bin/grep", "-RInH", "--", payload.Pattern, payload.Path],
+            [
+                "/bin/bash",
+                "-lc",
+                "/usr/bin/find \"$1\" -path \"$1/lost+found\" -prune -o -type f -readable -print0 2>/dev/null | while IFS= read -r -d \"\" file; do /usr/bin/grep -InH -- \"$2\" \"$file\"; rc=$?; if [ \"$rc\" -ne 0 ] && [ \"$rc\" -ne 1 ]; then exit \"$rc\"; fi; done",
+                "tinycosmos-search",
+                payload.Path,
+                payload.Pattern
+            ],
             TimeSpan.FromSeconds(30),
             cancellationToken).ConfigureAwait(false);
         if (run.ExitCode is not (0 or 1))

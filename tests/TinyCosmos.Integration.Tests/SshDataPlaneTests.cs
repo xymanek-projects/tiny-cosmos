@@ -222,10 +222,28 @@ public sealed class SshDataPlaneTests
 
         Assert.Contains(list.Entries, entry => entry.Path == "/workspace/project/hello.txt" && !entry.IsDirectory && entry.Length == 12);
         Assert.Contains(list.Entries, entry => entry.Path == "/workspace/project/src" && entry.IsDirectory);
+        var searchCommand = runner.Calls.Last(call => call.FileName == "/usr/bin/ssh").Arguments.Last();
+        Assert.Contains("/usr/bin/find", searchCommand, StringComparison.Ordinal);
+        Assert.Contains("lost+found", searchCommand, StringComparison.Ordinal);
+        Assert.Contains("tinycosmos-search", searchCommand, StringComparison.Ordinal);
         var match = Assert.Single(search.Matches);
         Assert.Equal("/workspace/project/hello.txt", match.Path);
         Assert.Equal(7, match.LineNumber);
         Assert.Equal("hello tiny cosmos", match.Line);
+    }
+
+    [Fact]
+    public async Task OpenSftpFileServiceTreatsSearchWithoutMatchesAsEmptyResult()
+    {
+        using var temp = new TempDir();
+        var runner = new RecordingProcessRunner((fileName, _, _, _) =>
+            new ProcessRunResult(fileName == "/usr/bin/ssh" ? 0 : 1, string.Empty, string.Empty, TimedOut: false));
+        var files = new OpenSftpGuestFileService(Options(temp.Path), runner);
+
+        var search = await files.SearchAsync(Group(), new FileSearchPayload(1000, "grp_test", "/workspace/project", "absent", MaxMatches: 10), CancellationToken.None);
+
+        Assert.Empty(search.Matches);
+        Assert.False(search.Truncated);
     }
 
     private static GuestSshOptions Options(string root)
