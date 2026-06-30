@@ -88,6 +88,12 @@ jobs:
           sudo chown -R "$USER:$USER" artifacts/images
       - name: Package deb
         run: SKIP_PUBLISH=1 ./scripts/package-deb.sh
+      - name: Trim build-only image artifacts
+        run: |
+          mkdir -p artifacts/package-control
+          cp -a artifacts/deb/tiny-cosmos_0.1.0_amd64/DEBIAN artifacts/package-control/
+          rm -rf artifacts/deb/tiny-cosmos_0.1.0_amd64
+          find artifacts/images -type f \( -name rootfs.ext4 -o -name tinycosmos-guest \) -delete
       - name: Install package
         run: |
           sudo apt-get install -y "$PWD/artifacts/deb/tiny-cosmos_0.1.0_amd64.deb"
@@ -102,9 +108,15 @@ jobs:
           TINYCOSMOS_CLI=/usr/bin/tinycosmos \
           TINYCOSMOS_MANAGER=/usr/lib/tiny-cosmos/bin/tinycosmos-manager \
           TINYCOSMOS_GUEST=/usr/lib/tiny-cosmos/bin/tinycosmos-guest \
+          TINYCOSMOS_E2E_ARTIFACT_DIR="$PWD/artifacts/e2e" \
+          TINYCOSMOS_KEEP_E2E_ARTIFACTS=1 \
             ./scripts/e2e-local.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: tiny-cosmos-kvm-e2e-artifacts
-          path: artifacts/**
+          if-no-files-found: ignore
+          path: |
+            artifacts/e2e/**
+            artifacts/images/**/manifest.json
+            artifacts/package-control/**

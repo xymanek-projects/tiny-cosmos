@@ -3,7 +3,13 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/tiny-cosmos-e2e-$$"
-state_dir="$(mktemp -d)"
+if [[ -n "${TINYCOSMOS_E2E_ARTIFACT_DIR:-}" ]]; then
+  state_dir="$TINYCOSMOS_E2E_ARTIFACT_DIR"
+  rm -rf "$state_dir"
+  mkdir -p "$state_dir"
+else
+  state_dir="$(mktemp -d)"
+fi
 socket="$runtime_dir/manager.sock"
 manager_log="$state_dir/manager.log"
 

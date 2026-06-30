@@ -13,7 +13,7 @@ Options:
   --kernel PATH           Firecracker-compatible kernel image to copy.
   --initrd PATH           Optional initrd image to copy and use at boot.
   --modules-dir PATH      Optional /lib/modules/<version> tree to copy into rootfs.
-  --rootfs-size SIZE      Root filesystem size passed to truncate. Default: 8G.
+  --rootfs-size SIZE      Root filesystem size passed to truncate. Default: 3G.
   --suite NAME            Ubuntu suite. Default: noble.
   --mirror URL            Ubuntu mirror. Default: http://archive.ubuntu.com/ubuntu.
   --components LIST       Ubuntu archive components. Default: main,universe.
@@ -208,7 +208,7 @@ guest_binary="$(repo_root)/artifacts/publish/linux-x64/Guest/TinyCosmos.Guest"
 kernel_path=""
 initrd_path=""
 modules_dir=""
-rootfs_size="8G"
+rootfs_size="3G"
 suite="noble"
 mirror="http://archive.ubuntu.com/ubuntu"
 components="main,universe"
