@@ -257,16 +257,25 @@ static async Task<GuestReadyReport> ReadyAsync(JsonElement payload)
         DateTimeOffset.UtcNow);
 }
 
-static Task<GuestShutdownResponse> FlushShutdownAsync(JsonElement payload)
+static async Task<GuestShutdownResponse> FlushShutdownAsync(JsonElement payload)
 {
     var request = ProtocolJson.FromElement(payload, TinyCosmosJsonContext.Default.GuestShutdownRequest);
+    var flush = await ProcessRunner.RunAsync(
+        "/bin/sync",
+        [],
+        timeout: TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+    if (flush.ExitCode != 0 || flush.TimedOut)
+    {
+        throw new IOException("Guest filesystem sync did not complete.");
+    }
+
     if (request.PowerOff)
     {
         try
         {
             Process.Start(new ProcessStartInfo("/bin/sh")
             {
-                ArgumentList = { "-c", "sync; (sleep 0.25; /usr/bin/systemctl poweroff || /sbin/poweroff -f) >/dev/null 2>&1 &" },
+                ArgumentList = { "-c", "(sleep 0.25; /usr/bin/systemctl poweroff || /sbin/poweroff -f) >/dev/null 2>&1 &" },
                 UseShellExecute = false
             });
         }
@@ -276,7 +285,7 @@ static Task<GuestShutdownResponse> FlushShutdownAsync(JsonElement payload)
         }
     }
 
-    return Task.FromResult(new GuestShutdownResponse(request.BootNonce, FilesystemsFlushed: true, ShutdownRequested: true));
+    return new GuestShutdownResponse(request.BootNonce, FilesystemsFlushed: true, ShutdownRequested: true);
 }
 
 static ProtocolResponse Success<T>(ProtocolEnvelope envelope, T payload)

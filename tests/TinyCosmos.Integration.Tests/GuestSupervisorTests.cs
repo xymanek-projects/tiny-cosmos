@@ -31,6 +31,19 @@ public sealed class GuestSupervisorTests
         Assert.Equal("agent", ready.SshUser);
     }
 
+    [Fact]
+    public async Task GuestSupervisorFlushShutdownReportsSynchronousFlush()
+    {
+        var result = await RunGuestAsync("flush-shutdown", "op_bootnonce");
+
+        Assert.Equal(0, result.ExitCode);
+        var shutdown = JsonSerializer.Deserialize(result.Stdout, TinyCosmosJsonContext.Default.GuestShutdownResponse);
+        Assert.NotNull(shutdown);
+        Assert.Equal("op_bootnonce", shutdown!.BootNonce);
+        Assert.True(shutdown.FilesystemsFlushed);
+        Assert.True(shutdown.ShutdownRequested);
+    }
+
     private static async Task<ProcessResult> RunGuestAsync(params string[] args)
     {
         var start = new ProcessStartInfo(FindGuestExecutable())
