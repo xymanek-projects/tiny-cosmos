@@ -24,6 +24,7 @@ public sealed class ImageBuilderTests
         Assert.Contains("Type=oneshot", workspaceService, StringComparison.Ordinal);
         Assert.Contains("mount -t ext4 LABEL=tinycosmos-workspace /workspace/project", workspaceService, StringComparison.Ordinal);
         Assert.Contains("/dev/vdb /dev/vdc /dev/sdb /dev/xvdb", workspaceService, StringComparison.Ordinal);
+        Assert.Contains("chown agent:agent /workspace/project", workspaceService, StringComparison.Ordinal);
         Assert.Contains("TimeoutStartSec=75", workspaceService, StringComparison.Ordinal);
         Assert.Contains("\"$root/workspace/project\"", builder, StringComparison.Ordinal);
         Assert.Contains("systemctl enable workspace-project.service", builder, StringComparison.Ordinal);

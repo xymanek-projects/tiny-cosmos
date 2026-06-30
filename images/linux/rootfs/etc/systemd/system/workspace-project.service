@@ -6,7 +6,7 @@ After=local-fs.target
 Type=oneshot
 RemainAfterExit=yes
 TimeoutStartSec=75
-ExecStart=/bin/sh -ceu 'mkdir -p /workspace/project; for i in $(seq 1 120); do /usr/bin/mountpoint -q /workspace/project && exit 0; /usr/bin/mount -t ext4 LABEL=tinycosmos-workspace /workspace/project && exit 0; for dev in /dev/vdb /dev/vdc /dev/sdb /dev/xvdb; do if [ -b "$dev" ] && /usr/bin/mount -t ext4 "$dev" /workspace/project; then exit 0; fi; done; sleep 0.5; done; /usr/bin/lsblk -f >&2 || true; /usr/sbin/blkid >&2 || true; exit 1'
+ExecStart=/bin/sh -ceu 'mkdir -p /workspace/project; for i in $(seq 1 120); do /usr/bin/mountpoint -q /workspace/project && /usr/bin/chown agent:agent /workspace/project && exit 0; /usr/bin/mount -t ext4 LABEL=tinycosmos-workspace /workspace/project && /usr/bin/chown agent:agent /workspace/project && exit 0; for dev in /dev/vdb /dev/vdc /dev/sdb /dev/xvdb; do if [ -b "$dev" ] && /usr/bin/mount -t ext4 "$dev" /workspace/project; then /usr/bin/chown agent:agent /workspace/project && exit 0; fi; done; sleep 0.5; done; /usr/bin/lsblk -f >&2 || true; /usr/sbin/blkid >&2 || true; exit 1'
 
 [Install]
 WantedBy=multi-user.target
