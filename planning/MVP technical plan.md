@@ -864,7 +864,7 @@ worktree in the MVP. Repeating handoff creates another branch/worktree.
 ### Durable state
 
 The manager stores state in a per-user SQLite database below
-`$XDG_DATA_HOME/tiny-cosmos`. Use direct parameterized SQL and explicit schema
+`$XDG_DATA_HOME/.tiny-cosmos`. Use direct parameterized SQL and explicit schema
 migrations rather than EF Core.
 
 Persist at least:

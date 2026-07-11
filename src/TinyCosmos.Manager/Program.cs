@@ -8,10 +8,7 @@ var socketPath = GetOption(args, "--socket") ?? Path.Combine(
     Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR") ?? Path.GetTempPath(),
     "tiny-cosmos",
     "manager.sock");
-var statePath = GetOption(args, "--state") ?? Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-    "tiny-cosmos",
-    "state.sqlite3");
+var statePath = GetOption(args, "--state") ?? ManagerPaths.DefaultStatePath();
 var stateDirectory = Path.GetDirectoryName(Path.GetFullPath(statePath))!;
 var brokerSocketPath = GetOption(args, "--broker-socket") ?? "/run/tiny-cosmos/broker.sock";
 var idleStopMinutes = double.TryParse(GetOption(args, "--idle-stop-minutes"), out var configuredIdleStopMinutes)

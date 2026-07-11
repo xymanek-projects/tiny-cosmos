@@ -323,7 +323,7 @@ because Windows service semantics differ.
 | Identity namespace | owner UID | owner **SID** |
 | Guest out-of-band channel | virtio-vsock | **hvsocket** (host `AF_HYPERV` ↔ guest `AF_VSOCK`), see §10 |
 | Guest data plane | OpenSSH | OpenSSH (identical) |
-| Per-user state path | `$XDG_DATA_HOME/tiny-cosmos` | `%LOCALAPPDATA%\TinyCosmos` |
+| Per-user state path | `$XDG_DATA_HOME/.tiny-cosmos` | `%LOCALAPPDATA%\TinyCosmos` |
 
 ### The manager cannot be a Windows service
 
