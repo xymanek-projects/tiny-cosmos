@@ -128,6 +128,18 @@ if ! grep -q '"exitCode":0' "$pty_log" || ! grep -q 'tiny-pty' "$pty_log"; then
   exit 1
 fi
 
+seed_log="$state_dir/seed.log"
+if ! "${cli[@]}" exec "$group_id" --socket "$socket" -- bash -lc 'test -f /workspace/project/TinyCosmos.slnx && test -f /workspace/project/src/TinyCosmos.Cli/Program.cs && test ! -e /workspace/project/.git && test -f /workspace/project/.tinycosmos-seed && printf tiny-seed' >"$seed_log" 2>&1; then
+  echo "workspace seed check failed:" >&2
+  cat "$seed_log" >&2
+  exit 1
+fi
+if ! grep -q '"exitCode":0' "$seed_log" || ! grep -q 'tiny-seed' "$seed_log"; then
+  echo "workspace seed check returned an unexpected result:" >&2
+  cat "$seed_log" >&2
+  exit 1
+fi
+
 "${cli[@]}" file write "$group_id" /workspace/project/e2e.txt --text 'tiny needle' --overwrite --socket "$socket" >/dev/null
 read_log="$state_dir/read.log"
 "${cli[@]}" file read "$group_id" /workspace/project/e2e.txt --socket "$socket" >"$read_log"

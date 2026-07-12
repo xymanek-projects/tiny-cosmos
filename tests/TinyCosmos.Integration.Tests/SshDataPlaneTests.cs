@@ -246,6 +246,59 @@ public sealed class SshDataPlaneTests
         Assert.False(search.Truncated);
     }
 
+    [Fact]
+    public async Task OpenSshWorkspaceSeederCreatesTarUploadsAndExtractsIntoEmptyGuestWorkspace()
+    {
+        using var temp = new TempDir();
+        var source = Path.Combine(temp.Path, "source");
+        Directory.CreateDirectory(Path.Combine(source, "src"));
+        await File.WriteAllTextAsync(Path.Combine(source, "README.md"), "hello seed");
+        await File.WriteAllTextAsync(Path.Combine(source, "src", "tool.sh"), "#!/bin/sh\n");
+        File.SetUnixFileMode(Path.Combine(source, "src", "tool.sh"), UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        string? listText = null;
+        string? batchText = null;
+        var runner = new RecordingProcessRunner((fileName, arguments, _, _) =>
+        {
+            if (fileName == "/usr/bin/tar")
+            {
+                var listPath = arguments[FindArgument(arguments, "-T") + 1];
+                listText = File.ReadAllText(listPath);
+                var archive = arguments[FindArgument(arguments, "-cf") + 1];
+                File.WriteAllBytes(archive, "tar"u8.ToArray());
+                return new ProcessRunResult(0, string.Empty, string.Empty, TimedOut: false);
+            }
+
+            if (fileName == "/usr/bin/sftp")
+            {
+                var batch = arguments[FindArgument(arguments, "-b") + 1];
+                batchText = File.ReadAllText(batch);
+                return new ProcessRunResult(0, string.Empty, string.Empty, TimedOut: false);
+            }
+
+            if (fileName == "/usr/bin/ssh")
+            {
+                return new ProcessRunResult(0, string.Empty, string.Empty, TimedOut: false);
+            }
+
+            return new ProcessRunResult(1, string.Empty, "unexpected command", TimedOut: false);
+        });
+        var seeder = new OpenSshGuestWorkspaceSeeder(Options(temp.Path), runner);
+
+        await seeder.SeedAsync(Group(source), CancellationToken.None);
+
+        Assert.Equal(["/usr/bin/tar", "/usr/bin/sftp", "/usr/bin/ssh"], runner.Calls.Select(call => call.FileName));
+        Assert.NotNull(listText);
+        var listed = listText!.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(["README.md", "src/tool.sh"], listed);
+        Assert.NotNull(batchText);
+        Assert.Contains("put -p", batchText, StringComparison.Ordinal);
+        Assert.Contains("/tmp/tinycosmos-seed-", batchText, StringComparison.Ordinal);
+        var extractCommand = runner.Calls.Single(call => call.FileName == "/usr/bin/ssh").Arguments.Last();
+        Assert.Contains("/workspace/project", extractCommand, StringComparison.Ordinal);
+        Assert.Contains("/usr/bin/tar -C \"$dest\" -xpf \"$archive\"", extractCommand, StringComparison.Ordinal);
+        Assert.Contains(".tinycosmos-seed", extractCommand, StringComparison.Ordinal);
+    }
+
     private static GuestSshOptions Options(string root)
     {
         return new GuestSshOptions(
@@ -257,12 +310,12 @@ public sealed class SshDataPlaneTests
             Path.Combine(root, "tmp"));
     }
 
-    private static GroupBundle Group()
+    private static GroupBundle Group(string? hostWorkspacePath = null, string? guestProjectPath = "/workspace/project")
     {
         var groupId = new GroupId("grp_testfixture1234567");
         var sandboxId = new SandboxId("sbx_testfixture1234567");
         return new GroupBundle(
-            new GroupRecord(groupId, new LogicalGroupName("opencode:test"), 1000, new GroupMetadata(null, "/workspace/project", null), sandboxId, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch),
+            new GroupRecord(groupId, new LogicalGroupName("opencode:test"), 1000, new GroupMetadata(hostWorkspacePath, guestProjectPath, null), sandboxId, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch),
             new SandboxRecord(
                 sandboxId,
                 groupId,

@@ -77,6 +77,12 @@ public static class WorkspaceSeeder
     private static SeedFile BuildSeedFile(string root, string path)
     {
         var relative = Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/');
+        var validationError = ArchiveSafety.ValidateEntry(new ArchiveEntrySpec(relative, ArchiveEntryKind.RegularFile));
+        if (validationError is not null)
+        {
+            throw new TinyCosmosException(validationError);
+        }
+
         var mode = File.GetUnixFileMode(path);
         using var stream = File.OpenRead(path);
         using var sha = SHA256.Create();

@@ -16,6 +16,7 @@ public sealed class ManagerProtocolServer(
     IGuestExecutor? guestExecutor = null,
     IGuestControlClient? guestControlClient = null,
     IGuestFileService? guestFileService = null,
+    IGuestWorkspaceSeeder? guestWorkspaceSeeder = null,
     TimeSpan? idleStopAfter = null,
     TimeSpan? idleScanInterval = null)
 {
@@ -25,6 +26,7 @@ public sealed class ManagerProtocolServer(
     private readonly IGuestExecutor _guestExecutor = guestExecutor ?? new NotReadyGuestExecutor();
     private readonly IGuestControlClient _guestControlClient = guestControlClient ?? new NotReadyGuestControlClient();
     private readonly IGuestFileService _guestFileService = guestFileService ?? new NotReadyGuestFileService();
+    private readonly IGuestWorkspaceSeeder _guestWorkspaceSeeder = guestWorkspaceSeeder ?? new NoopGuestWorkspaceSeeder();
     private readonly TimeSpan? _idleStopAfter = idleStopAfter;
     private readonly TimeSpan _idleScanInterval = idleScanInterval ?? TimeSpan.FromMinutes(1);
 
@@ -446,6 +448,7 @@ public sealed class ManagerProtocolServer(
                     ?? throw new TinyCosmosException(new TinyCosmosError(TinyCosmosErrorCode.GroupNotFound, "Group not found during startup."));
                 var provisioning = await _provisioner.ProvisionPrimaryAsync(starting, cancellationToken).ConfigureAwait(false);
                 await _guestControlClient.EstablishAsync(starting, provisioning, cancellationToken).ConfigureAwait(false);
+                await _guestWorkspaceSeeder.SeedAsync(starting, cancellationToken).ConfigureAwait(false);
             }
             catch
             {

@@ -45,6 +45,41 @@ public sealed class ManagerBrokerIntegrationTests
     }
 
     [Fact]
+    public async Task StartSandboxSeedsWorkspaceAfterGuestControlBeforeMarkingReady()
+    {
+        using var temp = new TempDir();
+        var store = new StateStore(Path.Combine(temp.Path, "state.sqlite3"));
+        await store.InitializeAsync();
+        var broker = new LocalPlanningBrokerClient();
+        var guestControl = new RecordingGuestControlClient();
+        var seedCalls = 0;
+        var workspaceSeeder = new RecordingGuestWorkspaceSeeder(bundle =>
+        {
+            seedCalls++;
+            Assert.Equal([GuestControlOperations.Hello, GuestControlOperations.InstallSshKey, GuestControlOperations.Ready], guestControl.Operations);
+            Assert.Equal(LifecycleState.Starting, bundle.PrimarySandbox.LifecycleState);
+            return Task.CompletedTask;
+        });
+        var server = new ManagerProtocolServer(
+            Path.Combine(temp.Path, "manager.sock"),
+            store,
+            broker,
+            new PassingHostPrerequisiteChecker(),
+            guestControlClient: guestControl,
+            guestWorkspaceSeeder: workspaceSeeder);
+        var group = await CreateGroupAsync(server, temp.Path);
+
+        var response = await server.DispatchAsync(Envelope(
+            ManagerOperations.StartSandbox,
+            new SandboxTransitionPayload(1000, group.PrimarySandbox.SandboxId.Value)));
+
+        Assert.True(response.Success, response.Error?.Message);
+        Assert.Equal(1, seedCalls);
+        var updated = ProtocolJson.FromElement(response.Payload!.Value, TinyCosmosJsonContext.Default.GroupBundle);
+        Assert.Equal(LifecycleState.Ready, updated.PrimarySandbox.LifecycleState);
+    }
+
+    [Fact]
     public async Task StartSandboxReturnsDependencyErrorBeforeBrokerWhenHostPrerequisitesFail()
     {
         using var temp = new TempDir();
@@ -114,6 +149,35 @@ public sealed class ManagerBrokerIntegrationTests
 
         Assert.False(response.Success);
         Assert.Equal(TinyCosmosErrorCode.NotReady, response.Error?.Code);
+        Assert.NotEmpty(broker.ExecutedCommands);
+        var after = await store.FindByGroupIdAsync(1000, group.Group.GroupId);
+        Assert.Equal(LifecycleState.Stopped, after!.PrimarySandbox.LifecycleState);
+        Assert.Equal(StopReason.HostReconcile, after.PrimarySandbox.StopReason);
+    }
+
+    [Fact]
+    public async Task StartSandboxRestoresStoppedWhenWorkspaceSeedFails()
+    {
+        using var temp = new TempDir();
+        var store = new StateStore(Path.Combine(temp.Path, "state.sqlite3"));
+        await store.InitializeAsync();
+        var broker = new LocalPlanningBrokerClient();
+        var server = new ManagerProtocolServer(
+            Path.Combine(temp.Path, "manager.sock"),
+            store,
+            broker,
+            new PassingHostPrerequisiteChecker(),
+            guestControlClient: new RecordingGuestControlClient(),
+            guestWorkspaceSeeder: new RecordingGuestWorkspaceSeeder(_ =>
+                throw new TinyCosmosException(new TinyCosmosError(TinyCosmosErrorCode.PlatformRejected, "seed failed"))));
+        var group = await CreateGroupAsync(server, temp.Path);
+
+        var response = await server.DispatchAsync(Envelope(
+            ManagerOperations.StartSandbox,
+            new SandboxTransitionPayload(1000, group.PrimarySandbox.SandboxId.Value)));
+
+        Assert.False(response.Success);
+        Assert.Equal(TinyCosmosErrorCode.PlatformRejected, response.Error?.Code);
         Assert.NotEmpty(broker.ExecutedCommands);
         var after = await store.FindByGroupIdAsync(1000, group.Group.GroupId);
         Assert.Equal(LifecycleState.Stopped, after!.PrimarySandbox.LifecycleState);
@@ -412,11 +476,11 @@ public sealed class ManagerBrokerIntegrationTests
         Assert.Equal(LifecycleState.Stopped, unchanged.PrimarySandbox.LifecycleState);
     }
 
-    private static async Task<GroupBundle> CreateGroupAsync(ManagerProtocolServer server)
+    private static async Task<GroupBundle> CreateGroupAsync(ManagerProtocolServer server, string hostWorkspacePath = "/host")
     {
         var response = await server.DispatchAsync(Envelope(
             ManagerOperations.GetOrCreateGroup,
-            new GroupCreatePayload("opencode:broker-start", 1000, "/host", "/workspace/project", "ubuntu-24.04-dev", ResourceAllocation.Default)));
+            new GroupCreatePayload("opencode:broker-start", 1000, hostWorkspacePath, "/workspace/project", "ubuntu-24.04-dev", ResourceAllocation.Default)));
         Assert.True(response.Success, response.Error?.Message);
         return ProtocolJson.FromElement(response.Payload!.Value, TinyCosmosJsonContext.Default.GroupBundle);
     }
@@ -440,6 +504,11 @@ public sealed class ManagerBrokerIntegrationTests
     private sealed class FailingPrerequisiteChecker : IHostPrerequisiteChecker
     {
         public TinyCosmosError? ValidateForVmStart() => new(TinyCosmosErrorCode.DependencyMissing, "missing test dependency");
+    }
+
+    private sealed class RecordingGuestWorkspaceSeeder(Func<GroupBundle, Task> handler) : IGuestWorkspaceSeeder
+    {
+        public Task SeedAsync(GroupBundle target, CancellationToken cancellationToken) => handler(target);
     }
 
     private sealed class TempDir : IDisposable

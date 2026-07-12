@@ -40,6 +40,7 @@ var server = new ManagerProtocolServer(
     guestExecutor: new OpenSshGuestExecutor(sshOptions),
     guestControlClient: new FirecrackerVsockGuestControlClient(GuestControlOptions.FromSshOptions(sshOptions)),
     guestFileService: new OpenSftpGuestFileService(sshOptions),
+    guestWorkspaceSeeder: new OpenSshGuestWorkspaceSeeder(sshOptions),
     idleStopAfter: idleStopMinutes <= 0 ? null : TimeSpan.FromMinutes(idleStopMinutes));
 await server.RunAsync(cts.Token).ConfigureAwait(false);
 
